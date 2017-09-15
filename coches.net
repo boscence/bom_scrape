@@ -1,0 +1,138 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Mar 25 22:55:35 2016
+@author: ab
+"""
+
+###########################################################
+###########################################################
+###
+###########################################################
+###########################################################
+
+from lxml import html
+import requests
+import pandas as pd
+import time
+import re
+from datetime import datetime
+from threading import Timer
+
+def scrape():
+    ###########################################################
+    ###########################################################
+    ### Create the URL set
+    ###########################################################
+    ###########################################################    
+    url_num = [i for i in range(1,1000,1)]
+    
+    urls = []
+    for i in url_num:
+        urls.append('http://www.coches.net/segunda-mano/?pg='+str(i))
+     
+    ###########################################################
+    ###########################################################
+    ### Do the scraping
+    ###########################################################
+    ###########################################################
+    
+    for i in urls:
+        add_id = []
+        car = []
+        price = []
+        fuel = []
+        city = []
+        year = []
+        km = []
+        bom = requests.get(i)
+        tree = html.fromstring(bom.content)
+        
+        for i in tree.find_class('mt-SerpList'):#print(i[0].attrib)        
+            for x in i: add_id.append(x.get('id'))    
+    
+            
+        for i in tree.find_class('mt-CardAd-title'):
+            car.append(i[0].text)
+        for i in tree.find_class('mt-CardAd-price'):
+            price.append(i[0].text)
+    
+        for i in tree.find_class('mt-CardAd-attributesList'):
+            fuel.append(i[1].text)
+            city.append(i[0].text)
+            year.append(i[2].text)
+            km.append(i[3].text)    
+    
+    
+    ###########################################################
+    ###########################################################
+    ### Clean the lsists
+    ###########################################################
+    ###########################################################
+    
+        ### We only want IDs starting with #
+        add_id = [x for x in add_id if x.startswith('#')]
+        
+        ### Replace the km and point characters
+        km = [x.replace(' km','') for x in km]
+        km = [x.replace('.','') for x in km]
+        
+        ### Replace the € and point characters
+        price = [x.replace(' €','') for x in price]
+        price = [x.replace('.','') for x in price]
+    
+    ###########################################################
+    ###########################################################
+    ### Check that the lists are the same size. 
+    ### This helps ensure we have matching data
+    ###########################################################
+    ###########################################################
+    
+        lists = [add_id,car,price,fuel,city,year,km]
+        same_length = [len(i) for i in lists]
+    
+    
+    ###########################################################
+    ###########################################################
+    ### Add a new list for the date
+    ### Make it the same length as the other lsists
+    ###########################################################
+    ###########################################################
+    
+        if len(set(same_length)) == 1:
+            date_today = [time.strftime("%d/%m/%Y") for i in range(0,same_length[0],1)]
+        
+        lists.append(date_today)
+        
+        ### Check lengths again
+        same_length = [len(i) for i in lists]
+    
+    
+    ###########################################################
+    ###########################################################
+    ### Export to CSV
+    ###########################################################
+    ###########################################################
+    
+    ### This commented out code created the very first CSV file.
+    # This is no longer needed because we want to append to this file, not creating a new file
+        '''
+        if len(set(same_length)) == 1:
+            weblist = pd.DataFrame({'fuel':fuel,'id':add_id,'veh': car,'price': price,'city': city,'year': year,'mileage': km,'date_of_scrape':date_today})
+            weblist.to_csv('C:\\DATOS\\coches_scrape.csv',index=False,decimal=',')
+        
+        '''
+    ### This appends the new daily data to the CSV
+        if len(set(same_length)) == 1:
+            weblist = pd.DataFrame({'fuel':fuel,'id':add_id,'veh': car,'price': price,'city': city,'year': year,'mileage': km,'date_of_scrape':date_today})
+            with open('C:\\DATOS\\coches_scrape.csv', 'a') as f:            
+                weblist.to_csv(f, header=False,index=False, decimal=',')
+   # '''
+    #########################################################
+    #########################################################
+    #########################################################
+    #########################################################
+    #########################################################
+    #########################################################
+    
+
+scrape()
